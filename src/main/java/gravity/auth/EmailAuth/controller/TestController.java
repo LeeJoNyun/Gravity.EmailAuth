@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api")
@@ -24,7 +25,7 @@ public class TestController {
 
     @Async
     @PostMapping("/makeToken")
-    public TestOutputModel setToken(@RequestBody TestInputModel model) throws NoSuchAlgorithmException, InvalidKeyException {
+    public CompletableFuture<TestOutputModel> setToken(@RequestBody TestInputModel model) throws NoSuchAlgorithmException, InvalidKeyException {
         String secretKey = _service.getSercretKey(model.getGameCode());
 
         long now = Instant.now().getEpochSecond();
@@ -45,7 +46,7 @@ public class TestController {
 
         outputmodel.setSign(sign);
 
-        return outputmodel;
+        return CompletableFuture.completedFuture(outputmodel);
     }
 
 }

@@ -28,12 +28,12 @@ public class EmailListService {
         StoredProcedureQuery query = _em.createStoredProcedureQuery("[dbo].[usp_send_email]");
 
         // 매개변수 설정 (입력 매개변수)
-        query.registerStoredProcedureParameter("@pGameCode", String.class, ParameterMode.IN);
         query.registerStoredProcedureParameter("@pEmail", String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("@pGameCode", String.class, ParameterMode.IN);
         query.registerStoredProcedureParameter("@pToken", String.class, ParameterMode.IN);
 
-        query.setParameter("@pGameCode", input.gameCode);
         query.setParameter("@pEmail", input.email);
+        query.setParameter("@pGameCode", input.gameCode);
         query.setParameter("@pToken", input.token);
 
         // 출력 매개변수 설정 (출력 값)
