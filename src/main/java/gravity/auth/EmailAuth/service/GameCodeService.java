@@ -2,10 +2,7 @@ package gravity.auth.EmailAuth.service;
 
 import gravity.auth.EmailAuth.entity.GameCode;
 import gravity.auth.EmailAuth.dao.GameCodeRepository;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.ParameterMode;
-import jakarta.persistence.StoredProcedureParameter;
-import jakarta.persistence.StoredProcedureQuery;
+import jakarta.persistence.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,6 +12,7 @@ import org.springframework.stereotype.Service;
 public class GameCodeService {
 
     private final GameCodeRepository _repo;
+//    @PersistenceContext
     private final EntityManager _em;
 
     public String getSercretKey(String gameCode){

@@ -1,16 +1,19 @@
 package gravity.auth.EmailAuth.controller;
 
 import com.fasterxml.jackson.databind.util.JSONPObject;
+import gravity.auth.EmailAuth.dto.CallSendEmailInputModel;
 import gravity.auth.EmailAuth.dto.EmailInputModel;
 import gravity.auth.EmailAuth.dto.JsonResult;
 import gravity.auth.EmailAuth.dto.TestOutputModel;
 import gravity.auth.EmailAuth.entity.EmailList;
 import gravity.auth.EmailAuth.helper.CryptoHelper;
 import gravity.auth.EmailAuth.service.EmailListService;
+import gravity.auth.EmailAuth.service.GameCodeService;
 import io.swagger.v3.core.util.Json;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.EnableAsync;
@@ -18,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
 import java.util.List;
@@ -31,6 +35,7 @@ public class EmailAuthController {
 
     private final CryptoHelper _helper;
     private final EmailListService _emailService;
+    private final GameCodeService _gameCodeService;
 
     @Async
     @PostMapping
@@ -52,33 +57,73 @@ public class EmailAuthController {
         input.setGameCode(model.getGameCode());
         input.setToken(encStr);
 
+        JsonResult result = new JsonResult();
+
         // 회원정보 DB 저장
-        int result = _emailService.sendEmail(input);
-
-        if(result == 0){
-
+        int resultCode = _emailService.sendEmail(input);
+        String resultMessage = "";
+        if(resultCode != 0){
+            result.setMessage("DB 저장 에러");
+            result.setErrorCode(resultCode);
+            return CompletableFuture.completedFuture(result);
         }
-        //우선 여기까지 개발
+        // secretKey 조회
+        String secretKey = _gameCodeService.getSercretKey(gameCode);
 
+        String plainText = getPlainText(email, sign, gameCode, secretKey);
+        if(plainText.contains("/") || plainText.contains("+") || plainText.contains("=")){
+            plainText = toUrlSafeBase64(plainText);
+        }
+        CallSendEmailInputModel inputModel = new CallSendEmailInputModel();
+        inputModel.setEmail(email);
+        inputModel.setPlainText(plainText);
+
+        try{
+            // 외부 api 호출
+            SendEmail(inputModel);
+        }catch( Exception e ){
+            result.setErrorCode(-999);
+            result.setMessage(e.getMessage());
+        }
+
+        result.setMessage(resultMessage);
+        result.setErrorCode(0);
+
+        return CompletableFuture.completedFuture(result);
 
 
     }
 
     //region Email 발송 API 호출
-    public int SendEmail(EmailInputModel model){
-        String url = "https://test-authemail.gnjoy.com";
+    public String SendEmail(CallSendEmailInputModel input){
+        String url = "https://test-authemail.gnjoy.com/api/EmailAuth/exeEmailSend";
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("Content-Type", "application/json");
 
-        HttpEntity<EmailInputModel> entity = new HttpEntity<>(model, headers);
+        HttpEntity<CallSendEmailInputModel> entity = new HttpEntity<>(input, headers);
 
-        ResponseEntity<String> response = restTemplate.e
+        RestTemplate restTemplate = new RestTemplate();
+        try {
+            // API 호출 (POST 방식)
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+            return response.getStatusCode().toString();
+        } catch (Exception e) {
+            // 예외 처리
+            return e.getMessage();
+        }
     }
     //endregion
 
 
     // region 내부 처리 소스
+
+    // PlainText 생성
+    private String getPlainText(String email, String sign, String gameCode, String secretKey) throws Exception {
+        String timestamp = getTimestampString(sign);
+        String plainText = timestamp + "|" + email + "|" + gameCode;
+        return _helper.encryptAes256(plainText, secretKey, null);
+    }
 
     // Sign값의 유효성 검사
     private void ValidateSignHeader(String sign) throws Exception {
@@ -149,6 +194,14 @@ public class EmailAuthController {
                 throw new Exception("사용 할 수 없는 값입니다.");
             }
         }
+    }
+
+    // Base64 -> Url Safe Base64 변환
+    private String toUrlSafeBase64(String base64){
+        return base64
+                .replace("+","-")
+                .replace("/","_")
+                .replace("=","");
     }
     // endregion
 

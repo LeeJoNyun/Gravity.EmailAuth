@@ -5,6 +5,7 @@ import gravity.auth.EmailAuth.dto.EmailInputModel;
 import gravity.auth.EmailAuth.entity.EmailList;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
+import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.StoredProcedureQuery;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class EmailListService {
     private final EmailListRepository _repo;
+//    @PersistenceContext
     private final EntityManager _em;
 
     public List<EmailList> getEmailList(String token){
